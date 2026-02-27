@@ -62,3 +62,4 @@ debian/mfoc-hardnested.debhelper.log
 debian/mfoc-hardnested.substvars
 
 config.h.in~
+.idea/*
