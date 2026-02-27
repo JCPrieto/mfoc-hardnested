@@ -78,13 +78,20 @@ class MfocRunner:
     return_code: int | None = None
 
     try:
-      os.killpg(self._process.pid, signal.SIGTERM)
-      return_code = self._process.wait(timeout=3)
-      self.logger.info("Runner process terminated with SIGTERM")
+      os.killpg(self._process.pid, signal.SIGINT)
+      return_code = self._process.wait(timeout=4)
+      self.logger.info("Runner process terminated cleanly with SIGINT")
     except subprocess.TimeoutExpired:
-      os.killpg(self._process.pid, signal.SIGKILL)
-      return_code = self._process.wait(timeout=3)
-      self.logger.warning("Runner process forced to SIGKILL")
+      self.logger.warning("Runner ignored SIGINT; escalating to SIGTERM")
+      os.killpg(self._process.pid, signal.SIGTERM)
+      try:
+        return_code = self._process.wait(timeout=3)
+        self.logger.info("Runner process terminated with SIGTERM")
+      except subprocess.TimeoutExpired:
+        self.logger.warning("Runner ignored SIGTERM; forcing SIGKILL")
+        os.killpg(self._process.pid, signal.SIGKILL)
+        return_code = self._process.wait(timeout=3)
+        self.logger.warning("Runner process forced to SIGKILL")
     except OSError as exc:
       self.logger.error("Runner cancel failed: %s", exc)
       return False, str(exc)
