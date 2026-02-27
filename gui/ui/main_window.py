@@ -96,15 +96,25 @@ class MainWindow(Adw.ApplicationWindow):
     flags_box.append(self.force_hardnested_check)
     flags_box.append(self.reduce_memory_check)
 
-    self.status_label = Gtk.Label(label=f"Status: {self.controller.current_status()}")
-    self.status_label.set_xalign(0)
-    self.progress_bar = Gtk.ProgressBar()
-    self.progress_bar.set_hexpand(True)
-    self.progress_bar.set_show_text(True)
-    self.progress_bar.set_pulse_step(0.08)
+    phases_title = Gtk.Label(label="Execution phases")
+    phases_title.set_xalign(0)
+    phases_title.add_css_class("dim-label")
+    self.phase_overall_bar = Gtk.ProgressBar()
+    self.phase_overall_bar.set_hexpand(True)
+    self.phase_overall_bar.set_show_text(True)
     self.validation_label = Gtk.Label(label="")
     self.validation_label.set_xalign(0)
     self.validation_label.add_css_class("error")
+
+    summary_title = Gtk.Label(label="Execution summary")
+    summary_title.set_xalign(0)
+    summary_title.add_css_class("dim-label")
+    self.summary_time_label = Gtk.Label(label="Time: 00:00")
+    self.summary_time_label.set_xalign(0)
+    self.summary_status_label = Gtk.Label(label="Status: Ready")
+    self.summary_status_label.set_xalign(0)
+    self.summary_keys_label = Gtk.Label(label="Keys detected: None")
+    self.summary_keys_label.set_xalign(0)
 
     output_title = Gtk.Label(label="Process output")
     output_title.set_xalign(0)
@@ -141,9 +151,13 @@ class MainWindow(Adw.ApplicationWindow):
     container.append(description)
     container.append(form)
     container.append(flags_box)
-    container.append(self.status_label)
-    container.append(self.progress_bar)
+    container.append(phases_title)
+    container.append(self.phase_overall_bar)
     container.append(self.validation_label)
+    container.append(summary_title)
+    container.append(self.summary_time_label)
+    container.append(self.summary_status_label)
+    container.append(self.summary_keys_label)
     container.append(output_title)
     container.append(output_scroller)
     container.append(actions)
@@ -152,7 +166,8 @@ class MainWindow(Adw.ApplicationWindow):
     self.set_content(root)
     self._connect_validation_signals()
     self._update_validation_state()
-    self._refresh_progress()
+    self._refresh_phase_bars()
+    self._refresh_summary()
 
   def _on_start_clicked(self, _button: Gtk.Button) -> None:
     is_valid, validation_error = self._validate_form()
@@ -176,8 +191,9 @@ class MainWindow(Adw.ApplicationWindow):
     self._start_runtime_polling()
 
   def _refresh_status(self, status: str) -> None:
-    self.status_label.set_label(f"Status: {status}")
-    self._refresh_progress()
+    _ = status
+    self._refresh_phase_bars()
+    self._refresh_summary()
 
   def _add_text_row(
     self,
@@ -357,7 +373,8 @@ class MainWindow(Adw.ApplicationWindow):
     if status_update:
       self._refresh_status(status_update)
 
-    self._refresh_progress()
+    self._refresh_phase_bars()
+    self._refresh_summary()
     self._sync_action_buttons()
 
     keep_polling = self.controller.state.is_running or self.controller.has_pending_output()
@@ -388,21 +405,35 @@ class MainWindow(Adw.ApplicationWindow):
   def _clear_output_view(self) -> None:
     self._output_buffer.set_text("")
 
-  def _refresh_progress(self) -> None:
-    if self.controller.state.is_running:
-      if self.controller.state.progress_determinate:
-        fraction = max(0.0, min(1.0, self.controller.state.progress_fraction))
-        self.progress_bar.set_fraction(fraction)
-        self.progress_bar.set_text(f"{fraction * 100:.1f}%")
-      else:
-        self.progress_bar.pulse()
-        self.progress_bar.set_text("Working...")
+  def _refresh_phase_bars(self) -> None:
+    phase_index = self.controller.state.phase_index
+    phase_count = self.controller.state.phase_count
+    phase_name = self.controller.state.phase_name
+
+    if phase_index < 0 or phase_count < 1:
+      self.phase_overall_bar.set_fraction(0.0)
+      self.phase_overall_bar.set_text("Phases: idle")
       return
 
-    if self.controller.state.status == "finished":
-      self.progress_bar.set_fraction(1.0)
-      self.progress_bar.set_text("100%")
-      return
+    overall_fraction = self.controller.current_phase_overall_fraction()
+    phase_pos = phase_index + 1
+    self.phase_overall_bar.set_fraction(overall_fraction)
+    self.phase_overall_bar.set_text(
+      f"Phase {phase_pos}/{phase_count}: {phase_name} ({overall_fraction * 100:.1f}%)"
+    )
 
-    self.progress_bar.set_fraction(0.0)
-    self.progress_bar.set_text("Idle")
+  def _refresh_summary(self) -> None:
+    duration_text = self._format_duration(self.controller.current_duration_seconds())
+    self.summary_time_label.set_label(f"Time: {duration_text}")
+    self.summary_status_label.set_label(f"Status: {self.controller.current_status()}")
+    keys = self.controller.state.detected_keys
+    keys_text = ", ".join(keys) if keys else "None"
+    self.summary_keys_label.set_label(f"Keys detected: {keys_text}")
+
+  def _format_duration(self, total_seconds: float) -> str:
+    total = int(total_seconds)
+    hours, rem = divmod(total, 3600)
+    minutes, seconds = divmod(rem, 60)
+    if hours > 0:
+      return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+    return f"{minutes:02d}:{seconds:02d}"
