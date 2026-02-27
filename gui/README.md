@@ -48,6 +48,7 @@ Basic validation is now active:
 
 - `Output file (-O)` is required and its parent folder must exist.
 - `Probes per sector (-P)` and `Nonce tolerance (-T)` must be integers in `[1, 1000]`.
+- Default values are `-P 150` and `-T 20`.
 - `Extra key hex (-k)` is optional, but if present must be 12 hex characters.
 - `Keys file (-f)` is optional, but if present must exist.
 

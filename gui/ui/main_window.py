@@ -63,8 +63,8 @@ class MainWindow(Adw.ApplicationWindow):
       form=form,
       row=1,
       label="Probes per sector (-P)",
-      placeholder="20",
-      default="20",
+      placeholder="150",
+      default="150",
     )
     self.tolerance_entry = self._add_text_row(
       form=form,
@@ -269,7 +269,7 @@ class MainWindow(Adw.ApplicationWindow):
   def _build_params_from_form(self) -> ExecutionParams:
     return ExecutionParams(
       output_file=self.output_entry.get_text().strip(),
-      probes_per_sector=self._parse_int(self.probes_entry.get_text(), fallback=20),
+      probes_per_sector=self._parse_int(self.probes_entry.get_text(), fallback=150),
       nonce_tolerance=self._parse_int(self.tolerance_entry.get_text(), fallback=20),
       extra_key_hex=self.key_entry.get_text().strip(),
       keys_file=self.key_file_entry.get_text().strip(),

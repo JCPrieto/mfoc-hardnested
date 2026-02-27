@@ -9,7 +9,7 @@ class ExecutionParams:
   """User-provided CLI-equivalent parameters."""
 
   output_file: str = ""
-  probes_per_sector: int = 20
+  probes_per_sector: int = 150
   nonce_tolerance: int = 20
   extra_key_hex: str = ""
   keys_file: str = ""
