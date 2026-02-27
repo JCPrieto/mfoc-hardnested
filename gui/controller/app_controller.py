@@ -3,7 +3,7 @@
 import logging
 import re
 
-from models.app_state import AppState
+from models.app_state import AppState, AppStatus
 from models.execution_params import ExecutionParams
 from runner.mfoc_runner import MfocRunner
 
@@ -23,44 +23,53 @@ class AppController:
 
     if self.state.is_running:
       self.logger.info("Start requested while already running")
-      return self.state.status_text
+      return self.current_status()
 
     started, error = self.runner.start(params)
     if not started:
       self.state.is_running = False
-      self.state.status_text = f"Start failed: {error}"
+      self._set_status("error", error)
       self.logger.error("Attack start failed: %s", error)
-      return self.state.status_text
+      return self.current_status()
 
     self.state.is_running = True
-    self.state.status_text = "Running..."
+    self._set_status("running")
     self.state.progress_determinate = False
     self.state.progress_fraction = 0.0
     self.logger.info("Attack state changed to running")
-    return self.state.status_text
+    return self.current_status()
 
   def cancel_attack(self) -> str:
     self.sync_running_state()
 
     if not self.state.is_running:
       self.logger.info("Cancel requested while not running")
-      return self.state.status_text
+      return self.current_status()
 
     cancelled, error = self.runner.cancel()
     if not cancelled:
-      self.state.status_text = f"Cancel failed: {error}"
+      self._set_status("error", error)
       self.logger.error("Attack cancel failed: %s", error)
-      return self.state.status_text
+      return self.current_status()
 
     self.state.is_running = False
-    self.state.status_text = "Cancelled"
+    self._set_status("ready", "Cancelled")
     self.state.progress_determinate = False
     self.state.progress_fraction = 0.0
     self.logger.info("Attack state changed to cancelled")
-    return self.state.status_text
+    return self.current_status()
 
   def current_status(self) -> str:
-    return self.state.status_text
+    labels: dict[AppStatus, str] = {
+      "ready": "Ready",
+      "running": "Running",
+      "finished": "Finished",
+      "error": "Error",
+    }
+    base = labels[self.state.status]
+    if self.state.status_detail:
+      return f"{base}: {self.state.status_detail}"
+    return base
 
   def sync_running_state(self) -> bool:
     """Refresh state.is_running from runner state."""
@@ -80,16 +89,16 @@ class AppController:
     self.state.is_running = is_running
 
     if was_running and not is_running:
-      if self.state.status_text != "Cancelled":
+      if self.state.status == "running":
         exit_code = self.runner.consume_exit_code()
         if exit_code == 0:
-          self.state.status_text = "Finished"
+          self._set_status("finished")
           self.state.progress_determinate = True
           self.state.progress_fraction = 1.0
         else:
-          self.state.status_text = f"Failed (exit {exit_code})"
-        status_update = self.state.status_text
-        self.logger.info("Attack finished with status: %s", self.state.status_text)
+          self._set_status("error", f"Exit {exit_code}")
+        status_update = self.current_status()
+        self.logger.info("Attack finished with status: %s", status_update)
 
     return lines, status_update
 
@@ -108,3 +117,7 @@ class AppController:
     if "Brute force phase completed" in text:
       self.state.progress_determinate = True
       self.state.progress_fraction = 1.0
+
+  def _set_status(self, status: AppStatus, detail: str = "") -> None:
+    self.state.status = status
+    self.state.status_detail = detail

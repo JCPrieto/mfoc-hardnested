@@ -157,7 +157,7 @@ class MainWindow(Adw.ApplicationWindow):
   def _on_start_clicked(self, _button: Gtk.Button) -> None:
     is_valid, validation_error = self._validate_form()
     if not is_valid:
-      self._refresh_status("Validation error")
+      self._refresh_status("Error")
       self.validation_label.set_label(validation_error)
       return
 
@@ -399,7 +399,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.progress_bar.set_text("Working...")
       return
 
-    if self.controller.state.status_text == "Finished":
+    if self.controller.state.status == "finished":
       self.progress_bar.set_fraction(1.0)
       self.progress_bar.set_text("100%")
       return
