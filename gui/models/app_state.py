@@ -9,3 +9,5 @@ class AppState:
 
   is_running: bool = False
   status_text: str = "Ready"
+  progress_determinate: bool = False
+  progress_fraction: float = 0.0

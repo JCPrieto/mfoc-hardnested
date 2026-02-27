@@ -1,10 +1,13 @@
 """Controller layer between UI and runner."""
 
 import logging
+import re
 
 from models.app_state import AppState
 from models.execution_params import ExecutionParams
 from runner.mfoc_runner import MfocRunner
+
+_PERCENT_RE = re.compile(r"(\d+(?:\.\d+)?)\s*%")
 
 
 class AppController:
@@ -31,6 +34,8 @@ class AppController:
 
     self.state.is_running = True
     self.state.status_text = "Running..."
+    self.state.progress_determinate = False
+    self.state.progress_fraction = 0.0
     self.logger.info("Attack state changed to running")
     return self.state.status_text
 
@@ -49,6 +54,8 @@ class AppController:
 
     self.state.is_running = False
     self.state.status_text = "Cancelled"
+    self.state.progress_determinate = False
+    self.state.progress_fraction = 0.0
     self.logger.info("Attack state changed to cancelled")
     return self.state.status_text
 
@@ -65,6 +72,7 @@ class AppController:
     lines: list[tuple[str, str]] = []
     for stream_name, text in self.runner.drain_output():
       lines.append((stream_name, text))
+      self._update_progress_from_output(text)
 
     status_update: str | None = None
     was_running = self.state.is_running
@@ -76,6 +84,8 @@ class AppController:
         exit_code = self.runner.consume_exit_code()
         if exit_code == 0:
           self.state.status_text = "Finished"
+          self.state.progress_determinate = True
+          self.state.progress_fraction = 1.0
         else:
           self.state.status_text = f"Failed (exit {exit_code})"
         status_update = self.state.status_text
@@ -86,3 +96,15 @@ class AppController:
   def has_pending_output(self) -> bool:
     """Return whether there are unread output lines."""
     return self.runner.has_pending_output()
+
+  def _update_progress_from_output(self, text: str) -> None:
+    percent_match = _PERCENT_RE.search(text)
+    if percent_match:
+      percent = float(percent_match.group(1))
+      self.state.progress_determinate = True
+      self.state.progress_fraction = max(0.0, min(1.0, percent / 100.0))
+      return
+
+    if "Brute force phase completed" in text:
+      self.state.progress_determinate = True
+      self.state.progress_fraction = 1.0

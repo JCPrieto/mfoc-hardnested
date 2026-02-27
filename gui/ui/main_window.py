@@ -98,6 +98,10 @@ class MainWindow(Adw.ApplicationWindow):
 
     self.status_label = Gtk.Label(label=f"Status: {self.controller.current_status()}")
     self.status_label.set_xalign(0)
+    self.progress_bar = Gtk.ProgressBar()
+    self.progress_bar.set_hexpand(True)
+    self.progress_bar.set_show_text(True)
+    self.progress_bar.set_pulse_step(0.08)
     self.validation_label = Gtk.Label(label="")
     self.validation_label.set_xalign(0)
     self.validation_label.add_css_class("error")
@@ -138,6 +142,7 @@ class MainWindow(Adw.ApplicationWindow):
     container.append(form)
     container.append(flags_box)
     container.append(self.status_label)
+    container.append(self.progress_bar)
     container.append(self.validation_label)
     container.append(output_title)
     container.append(output_scroller)
@@ -147,6 +152,7 @@ class MainWindow(Adw.ApplicationWindow):
     self.set_content(root)
     self._connect_validation_signals()
     self._update_validation_state()
+    self._refresh_progress()
 
   def _on_start_clicked(self, _button: Gtk.Button) -> None:
     is_valid, validation_error = self._validate_form()
@@ -171,6 +177,7 @@ class MainWindow(Adw.ApplicationWindow):
 
   def _refresh_status(self, status: str) -> None:
     self.status_label.set_label(f"Status: {status}")
+    self._refresh_progress()
 
   def _add_text_row(
     self,
@@ -350,6 +357,7 @@ class MainWindow(Adw.ApplicationWindow):
     if status_update:
       self._refresh_status(status_update)
 
+    self._refresh_progress()
     self._sync_action_buttons()
 
     keep_polling = self.controller.state.is_running or self.controller.has_pending_output()
@@ -379,3 +387,22 @@ class MainWindow(Adw.ApplicationWindow):
 
   def _clear_output_view(self) -> None:
     self._output_buffer.set_text("")
+
+  def _refresh_progress(self) -> None:
+    if self.controller.state.is_running:
+      if self.controller.state.progress_determinate:
+        fraction = max(0.0, min(1.0, self.controller.state.progress_fraction))
+        self.progress_bar.set_fraction(fraction)
+        self.progress_bar.set_text(f"{fraction * 100:.1f}%")
+      else:
+        self.progress_bar.pulse()
+        self.progress_bar.set_text("Working...")
+      return
+
+    if self.controller.state.status_text == "Finished":
+      self.progress_bar.set_fraction(1.0)
+      self.progress_bar.set_text("100%")
+      return
+
+    self.progress_bar.set_fraction(0.0)
+    self.progress_bar.set_text("Idle")
