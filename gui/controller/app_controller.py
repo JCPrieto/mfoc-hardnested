@@ -16,6 +16,9 @@ _KEY_PATTERNS = (
   re.compile(r"Found\s+Key\s+[AB]:\s*([0-9a-fA-F]{12})"),
   re.compile(r"revealed Key [AB]:\s*\[([0-9a-fA-F]{12})\]"),
 )
+_SECTOR_KEYS_RE = re.compile(
+  r"Sector\s+(\d+)\s*-\s*(?:Found\s+Key\s+A:\s*([0-9A-Fa-f]{12})|Unknown\s+Key\s+A)\s*(?:Found\s+Key\s+B:\s*([0-9A-Fa-f]{12})|Unknown\s+Key\s+B)"
+)
 _DEFAULT_KEYS_COUNT = 13
 _EXECUTION_PHASES = (
   "Authentication",
@@ -52,6 +55,7 @@ class AppController:
     self.state.execution_started_at = time.monotonic()
     self.state.execution_ended_at = None
     self.state.detected_keys = []
+    self.state.sector_keys = {}
     self.state.processed_key_attempts = 0
     self.state.estimated_key_attempts_total = self._estimate_key_attempts(params)
     self.state.phase_count = len(_EXECUTION_PHASES)
@@ -194,6 +198,18 @@ class AppController:
         key_value = match.group(1).upper()
         if key_value not in self.state.detected_keys:
           self.state.detected_keys.append(key_value)
+
+    sector_match = _SECTOR_KEYS_RE.search(text)
+    if not sector_match:
+      return
+    sector = int(sector_match.group(1))
+    key_a = (sector_match.group(2) or "").upper()
+    key_b = (sector_match.group(3) or "").upper()
+    row = self.state.sector_keys.setdefault(sector, {"A": "", "B": ""})
+    if key_a:
+      row["A"] = key_a
+    if key_b:
+      row["B"] = key_b
 
   def _set_status(self, status: AppStatus, detail: str = "") -> None:
     self.state.status = status

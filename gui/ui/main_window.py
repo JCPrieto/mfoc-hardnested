@@ -1,5 +1,6 @@
 """Main application window."""
 
+import csv
 from datetime import datetime
 from pathlib import Path
 
@@ -41,6 +42,11 @@ class MainWindow(Adw.ApplicationWindow):
     container.set_margin_bottom(24)
     container.set_margin_start(24)
     container.set_margin_end(24)
+
+    content_scroller = Gtk.ScrolledWindow()
+    content_scroller.set_vexpand(True)
+    content_scroller.set_hexpand(True)
+    content_scroller.set_child(container)
 
     description = Gtk.Label(
       label="Set essential execution parameters and start the run."
@@ -115,10 +121,28 @@ class MainWindow(Adw.ApplicationWindow):
     self.summary_status_label.set_xalign(0)
     self.summary_keys_label = Gtk.Label(label="Keys detected: None")
     self.summary_keys_label.set_xalign(0)
+    summary_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=18)
+    summary_row.append(self.summary_time_label)
+    summary_row.append(self.summary_status_label)
+    summary_row.append(self.summary_keys_label)
 
-    output_title = Gtk.Label(label="Process output")
-    output_title.set_xalign(0)
-    output_title.add_css_class("dim-label")
+    self.results_grid = Gtk.Grid()
+    self.results_grid.set_column_spacing(18)
+    self.results_grid.set_row_spacing(6)
+
+    results_scroller = Gtk.ScrolledWindow()
+    results_scroller.set_min_content_height(180)
+    results_scroller.set_vexpand(True)
+    results_scroller.set_hexpand(True)
+    results_scroller.set_child(self.results_grid)
+
+    export_actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    self.export_keys_txt_button = Gtk.Button(label="Export keys (.txt)")
+    self.export_keys_txt_button.connect("clicked", self._on_export_keys_txt_clicked)
+    self.export_keys_csv_button = Gtk.Button(label="Export keys (.csv)")
+    self.export_keys_csv_button.connect("clicked", self._on_export_keys_csv_clicked)
+    export_actions.append(self.export_keys_txt_button)
+    export_actions.append(self.export_keys_csv_button)
 
     self.output_view = Gtk.TextView()
     self.output_view.set_editable(False)
@@ -135,7 +159,28 @@ class MainWindow(Adw.ApplicationWindow):
     output_scroller = Gtk.ScrolledWindow()
     output_scroller.set_vexpand(True)
     output_scroller.set_hexpand(True)
+    output_scroller.set_min_content_height(180)
     output_scroller.set_child(self.output_view)
+
+    tabs_stack = Gtk.Stack()
+    tabs_stack.set_vexpand(True)
+    tabs_stack.set_hexpand(True)
+
+    results_tab = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+    results_tab.set_vexpand(True)
+    results_tab.set_hexpand(True)
+    results_tab.append(results_scroller)
+    results_tab.append(export_actions)
+    tabs_stack.add_titled(results_tab, "results", "Results")
+
+    logs_tab = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+    logs_tab.set_vexpand(True)
+    logs_tab.set_hexpand(True)
+    logs_tab.append(output_scroller)
+    tabs_stack.add_titled(logs_tab, "logs", "Logs")
+
+    tabs_switcher = Gtk.StackSwitcher()
+    tabs_switcher.set_stack(tabs_stack)
 
     actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     self.start_button = Gtk.Button(label="Start")
@@ -155,19 +200,18 @@ class MainWindow(Adw.ApplicationWindow):
     container.append(self.phase_overall_bar)
     container.append(self.validation_label)
     container.append(summary_title)
-    container.append(self.summary_time_label)
-    container.append(self.summary_status_label)
-    container.append(self.summary_keys_label)
-    container.append(output_title)
-    container.append(output_scroller)
+    container.append(summary_row)
+    container.append(tabs_switcher)
+    container.append(tabs_stack)
     container.append(actions)
 
-    root.append(container)
+    root.append(content_scroller)
     self.set_content(root)
     self._connect_validation_signals()
     self._update_validation_state()
     self._refresh_phase_bars()
     self._refresh_summary()
+    self._refresh_sector_keys_table()
 
   def _on_start_clicked(self, _button: Gtk.Button) -> None:
     is_valid, validation_error = self._validate_form()
@@ -182,6 +226,7 @@ class MainWindow(Adw.ApplicationWindow):
     self._sync_action_buttons()
     if self.controller.state.is_running:
       self._clear_output_view()
+      self._refresh_sector_keys_table()
       self._start_runtime_polling()
 
   def _on_cancel_clicked(self, _button: Gtk.Button) -> None:
@@ -375,6 +420,7 @@ class MainWindow(Adw.ApplicationWindow):
 
     self._refresh_phase_bars()
     self._refresh_summary()
+    self._refresh_sector_keys_table()
     self._sync_action_buttons()
 
     keep_polling = self.controller.state.is_running or self.controller.has_pending_output()
@@ -426,9 +472,8 @@ class MainWindow(Adw.ApplicationWindow):
     duration_text = self._format_duration(self.controller.current_duration_seconds())
     self.summary_time_label.set_label(f"Time: {duration_text}")
     self.summary_status_label.set_label(f"Status: {self.controller.current_status()}")
-    keys = self.controller.state.detected_keys
-    keys_text = ", ".join(keys) if keys else "None"
-    self.summary_keys_label.set_label(f"Keys detected: {keys_text}")
+    count = self._count_detected_keys()
+    self.summary_keys_label.set_label(f"Keys detected: {count}")
 
   def _format_duration(self, total_seconds: float) -> str:
     total = int(total_seconds)
@@ -437,3 +482,157 @@ class MainWindow(Adw.ApplicationWindow):
     if hours > 0:
       return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
     return f"{minutes:02d}:{seconds:02d}"
+
+  def _refresh_sector_keys_table(self) -> None:
+    child = self.results_grid.get_first_child()
+    while child is not None:
+      next_child = child.get_next_sibling()
+      self.results_grid.remove(child)
+      child = next_child
+
+    headers = ("Sector", "Key A", "Key B")
+    for column, header_text in enumerate(headers):
+      header_label = Gtk.Label(label=header_text)
+      header_label.set_xalign(0)
+      header_label.add_css_class("heading")
+      self.results_grid.attach(header_label, column, 0, 1, 1)
+
+    rows = self.controller.state.sector_keys
+    if not rows:
+      empty_label = Gtk.Label(label="No sector/key data yet.")
+      empty_label.set_xalign(0)
+      empty_label.add_css_class("dim-label")
+      self.results_grid.attach(empty_label, 0, 1, 3, 1)
+      self.export_keys_txt_button.set_sensitive(False)
+      self.export_keys_csv_button.set_sensitive(False)
+      return
+
+    for row_index, sector in enumerate(sorted(rows.keys()), start=1):
+      values = rows[sector]
+      key_a = values.get("A", "") or "-"
+      key_b = values.get("B", "") or "-"
+      row_values = (str(sector), key_a, key_b)
+      for column, cell_text in enumerate(row_values):
+        cell_label = Gtk.Label(label=cell_text)
+        cell_label.set_xalign(0)
+        cell_label.set_selectable(True)
+        self.results_grid.attach(cell_label, column, row_index, 1, 1)
+
+    self.export_keys_txt_button.set_sensitive(True)
+    self.export_keys_csv_button.set_sensitive(True)
+
+  def _count_detected_keys(self) -> int:
+    if self.controller.state.sector_keys:
+      total = 0
+      for values in self.controller.state.sector_keys.values():
+        if values.get("A"):
+          total += 1
+        if values.get("B"):
+          total += 1
+      return total
+    return len(self.controller.state.detected_keys)
+
+  def _on_export_keys_txt_clicked(self, _button: Gtk.Button) -> None:
+    rows = self.controller.state.sector_keys
+    if not rows:
+      self.validation_label.set_label("No keys available to export.")
+      return
+
+    self._open_keys_export_chooser("txt")
+
+  def _on_export_keys_csv_clicked(self, _button: Gtk.Button) -> None:
+    rows = self.controller.state.sector_keys
+    if not rows:
+      self.validation_label.set_label("No keys available to export.")
+      return
+
+    self._open_keys_export_chooser("csv")
+
+  def _open_keys_export_chooser(self, format_name: str) -> None:
+    output_file = self.output_entry.get_text().strip()
+    base_name = f"recovered_keys.{format_name}"
+    parent_path: Path | None = None
+    if output_file:
+      target = Path(output_file)
+      base_name = f"{target.stem}_keys.{format_name}"
+      parent_path = target.parent
+
+    chooser = Gtk.FileChooserNative.new(
+      f"Export keys as .{format_name}",
+      self,
+      Gtk.FileChooserAction.SAVE,
+      "_Save",
+      "_Cancel",
+    )
+    chooser.set_current_name(base_name)
+    if parent_path is not None and parent_path.exists():
+      chooser.set_current_folder(Gio.File.new_for_path(str(parent_path)))
+    chooser.connect("response", self._on_export_chooser_response, format_name)
+    self._active_chooser = chooser
+    chooser.show()
+
+  def _on_export_chooser_response(
+    self,
+    chooser: Gtk.FileChooserNative,
+    response: int,
+    format_name: str,
+  ) -> None:
+    if response != Gtk.ResponseType.ACCEPT:
+      chooser.destroy()
+      self._active_chooser = None
+      return
+
+    file_obj = chooser.get_file()
+    if file_obj is None:
+      chooser.destroy()
+      self._active_chooser = None
+      return
+
+    file_path = file_obj.get_path()
+    if not file_path:
+      chooser.destroy()
+      self._active_chooser = None
+      return
+
+    target_path = Path(file_path)
+    if target_path.suffix.lower() != f".{format_name}":
+      target_path = target_path.with_suffix(f".{format_name}")
+
+    if format_name == "txt":
+      self._write_keys_txt(target_path)
+    else:
+      self._write_keys_csv(target_path)
+
+    chooser.destroy()
+    self._active_chooser = None
+
+  def _write_keys_txt(self, txt_path: Path) -> None:
+    rows = self.controller.state.sector_keys
+    keys: list[str] = []
+    for sector in sorted(rows.keys()):
+      values = rows[sector]
+      key_a = values.get("A", "")
+      key_b = values.get("B", "")
+      if key_a:
+        keys.append(key_a)
+      if key_b:
+        keys.append(key_b)
+
+    try:
+      txt_path.write_text("\n".join(keys) + "\n", encoding="utf-8")
+      self.validation_label.set_label(f"Keys exported: {txt_path}")
+    except OSError as exc:
+      self.validation_label.set_label(f"TXT export failed: {exc}")
+
+  def _write_keys_csv(self, csv_path: Path) -> None:
+    rows = self.controller.state.sector_keys
+    try:
+      with csv_path.open("w", encoding="utf-8", newline="") as file_obj:
+        writer = csv.writer(file_obj)
+        writer.writerow(["sector", "key_a", "key_b"])
+        for sector in sorted(rows.keys()):
+          values = rows[sector]
+          writer.writerow([sector, values.get("A", ""), values.get("B", "")])
+      self.validation_label.set_label(f"Keys exported: {csv_path}")
+    except OSError as exc:
+      self.validation_label.set_label(f"CSV export failed: {exc}")

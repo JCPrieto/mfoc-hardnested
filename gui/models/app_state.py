@@ -16,6 +16,7 @@ class AppState:
   execution_started_at: float | None = None
   execution_ended_at: float | None = None
   detected_keys: list[str] = field(default_factory=list)
+  sector_keys: dict[int, dict[str, str]] = field(default_factory=dict)
   estimated_key_attempts_total: int = 0
   processed_key_attempts: int = 0
   phase_name: str = "Idle"
