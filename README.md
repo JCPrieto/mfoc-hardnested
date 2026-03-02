@@ -1,62 +1,65 @@
-MFOC is an open source implementation of "offline nested" attack by Nethemba.
-Later was added so called "hardnested" attack by Carlo Meijer and Roel Verdult.
+MFOC is an open source implementation of the "offline nested" attack by Nethemba.
+This fork also includes the "hardnested" attack by Carlo Meijer and Roel Verdult.
 
-This program allow to recover authentication keys from MIFARE Classic card.
+The program recovers authentication keys from MIFARE Classic cards.
 
-Please note MFOC is able to recover keys from target only if it have a known key: default one (hardcoded in MFOC) or custom one (user provided using command line).
+MFOC can recover keys only if at least one known key is available:
+- a default key (hardcoded in MFOC), or
+- a custom key provided by the user through CLI options.
 
-This is a port to win32 x64 platform using native tools (Visual Studio 2019 + LLVM clang-cl toolchain).
-This tree was also reworked for gnu toolchain (autotool + gcc like the original).
- 
-Based on the idea by vk496 to integrate mylazycracker into mfoc, forked from his tree.
+This repository includes:
+- a Windows x64 build setup (Visual Studio + clang-cl), and
+- a GNU/Linux Autotools build flow.
 
-For credits (there are many) just look at the AUTHORS file.
+For credits, see `AUTHORS`.
 
-Uses 
-		libnfc 			https://github.com/nfc-tools/libnfc/
-		libusb-win32 	https://sourceforge.net/projects/libusb-win32/files/libusb-win32-releases/1.2.6.0/
-		pthreads4w		https://sourceforge.net/projects/pthreads4w/
-		liblzma			https://tukaani.org/xz/
+Dependencies used by this project:
+- `libnfc`: https://github.com/nfc-tools/libnfc/
+- `libusb-win32`: https://sourceforge.net/projects/libusb-win32/files/libusb-win32-releases/1.2.6.0/
+- `pthreads4w`: https://sourceforge.net/projects/pthreads4w/
+- `liblzma`: https://tukaani.org/xz/
 
-pthreads4w and liblzma are static linked.
-All these libs are precompiled and included in src\lib
+On the Visual Studio build path, prebuilt Windows-oriented libraries and headers are under `src/lib` and `src/include`.
 
 # Build from source
+
 Windows:
-Make sure you have Visual Studio 2019 with Desktop developement with C++, C++ Clang Compiler for Windows and C++ Clang-cl for v142 build tools installed.
-Open the solution and start compile.
-The compiled zip package will be in dist.
+- Install Visual Studio 2019 with Desktop development with C++ and clang-cl toolchain support.
+- Open `mfoc-hardnested.sln` and build.
 
 Linux:
-```
+```bash
 autoreconf -vis
 ./configure
-make && sudo make install
+make
+sudo make install
 ```
 
-## Debian packaging
+## Debian packaging (backend)
 
-Backend (`mfoc-hardnested`) package:
+This repository contains Debian packaging metadata under `debian/`.
+From repository root, build with:
+
 ```bash
-./packaging/build-backend-deb.sh
+dpkg-buildpackage -us -uc -b
 ```
 
-If dependencies are missing, install:
+If dependencies are missing:
+
 ```bash
 sudo apt install -y debhelper libnfc-dev liblzma-dev pkg-config
 ```
 
-GUI package:
-```bash
-./gui/packaging/deb/build-deb.sh
-```
+Note: there is currently no `./packaging/build-backend-deb.sh` script in this repository.
 
-# Usage #
-Needs libusb0.dll and nfc.dll in the path, better on the same directory.
-Needs to install libusbK v3.0.7.0, using Zadig https://zadig.akeo.ie/, go to Option, List All Devices, select your reader, select libusbK(v3.0.7.0) and click on replace driver.
-Then go in device manager and disable "Allow the computer to turn off this device to save power" in your reader under libusbK USB Devices.
-Put one MIFARE Classic tag that you want keys recovering;
-Lauching mfoc, you will need to pass options, see
-```
-mfoc-hardnested -h
+## GUI
+
+The GUI lives in `gui/` (lowercase). See `gui/README.md` for details.
+
+# Usage
+
+Show CLI help:
+
+```bash
+./src/mfoc-hardnested -h
 ```
