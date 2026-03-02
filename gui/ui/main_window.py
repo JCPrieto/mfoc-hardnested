@@ -9,7 +9,7 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, Gio, GLib, Gtk
+from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 
 from controller.app_controller import AppController
 from models.execution_params import ExecutionParams
@@ -30,14 +30,20 @@ class MainWindow(Adw.ApplicationWindow):
     self.controller = controller
     self._active_chooser: Gtk.FileChooserNative | None = None
     self._runtime_timer_id: int | None = None
+    self._install_css()
 
     root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
 
     header = Adw.HeaderBar()
-    header.set_title_widget(Gtk.Label(label="MFOC Hardnested"))
+    header.set_title_widget(
+      Adw.WindowTitle(
+        title="MFOC Hardnested",
+        subtitle="GNOME frontend prototype",
+      )
+    )
     root.append(header)
 
-    container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+    container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
     container.set_margin_top(24)
     container.set_margin_bottom(24)
     container.set_margin_start(24)
@@ -46,7 +52,10 @@ class MainWindow(Adw.ApplicationWindow):
     content_scroller = Gtk.ScrolledWindow()
     content_scroller.set_vexpand(True)
     content_scroller.set_hexpand(True)
-    content_scroller.set_child(container)
+    clamp = Adw.Clamp()
+    clamp.set_maximum_size(1120)
+    clamp.set_child(container)
+    content_scroller.set_child(clamp)
 
     description = Gtk.Label(
       label="Set essential execution parameters and start the run."
@@ -121,7 +130,10 @@ class MainWindow(Adw.ApplicationWindow):
     self.summary_status_label.set_xalign(0)
     self.summary_keys_label = Gtk.Label(label="Keys detected: None")
     self.summary_keys_label.set_xalign(0)
-    summary_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=18)
+    summary_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    self.summary_time_label.add_css_class("summary-chip")
+    self.summary_status_label.add_css_class("summary-chip")
+    self.summary_keys_label.add_css_class("summary-chip")
     summary_row.append(self.summary_time_label)
     summary_row.append(self.summary_status_label)
     summary_row.append(self.summary_keys_label)
@@ -141,6 +153,8 @@ class MainWindow(Adw.ApplicationWindow):
     self.export_keys_txt_button.connect("clicked", self._on_export_keys_txt_clicked)
     self.export_keys_csv_button = Gtk.Button(label="Export keys (.csv)")
     self.export_keys_csv_button.connect("clicked", self._on_export_keys_csv_clicked)
+    self.export_keys_txt_button.add_css_class("flat")
+    self.export_keys_csv_button.add_css_class("flat")
     export_actions.append(self.export_keys_txt_button)
     export_actions.append(self.export_keys_csv_button)
 
@@ -183,6 +197,7 @@ class MainWindow(Adw.ApplicationWindow):
     tabs_switcher.set_stack(tabs_stack)
 
     actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    actions.set_halign(Gtk.Align.END)
     self.start_button = Gtk.Button(label="Start")
     self.start_button.add_css_class("suggested-action")
     self.start_button.connect("clicked", self._on_start_clicked)
@@ -193,16 +208,29 @@ class MainWindow(Adw.ApplicationWindow):
     actions.append(self.start_button)
     actions.append(self.cancel_button)
 
-    container.append(description)
-    container.append(form)
-    container.append(flags_box)
-    container.append(phases_title)
-    container.append(self.phase_overall_bar)
-    container.append(self.validation_label)
-    container.append(summary_title)
-    container.append(summary_row)
-    container.append(tabs_switcher)
-    container.append(tabs_stack)
+    input_section = self._build_section(
+      "Execution parameters",
+      description,
+      form,
+      flags_box,
+      self.validation_label,
+    )
+    status_section = self._build_section(
+      "Execution status",
+      phases_title,
+      self.phase_overall_bar,
+      summary_title,
+      summary_row,
+    )
+    runtime_section = self._build_section(
+      "Runtime output",
+      tabs_switcher,
+      tabs_stack,
+    )
+
+    container.append(input_section)
+    container.append(status_section)
+    container.append(runtime_section)
     container.append(actions)
 
     root.append(content_scroller)
@@ -258,6 +286,20 @@ class MainWindow(Adw.ApplicationWindow):
     form.attach(label_widget, 0, row, 1, 1)
     form.attach(entry, 1, row, 1, 1)
     return entry
+
+  def _build_section(self, title: str, *children: Gtk.Widget) -> Gtk.Box:
+    section = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+    section.add_css_class("section-card")
+
+    title_label = Gtk.Label(label=title)
+    title_label.set_xalign(0)
+    title_label.add_css_class("section-title")
+    section.append(title_label)
+
+    for child in children:
+      section.append(child)
+
+    return section
 
   def _add_file_row(
     self,
@@ -636,3 +678,31 @@ class MainWindow(Adw.ApplicationWindow):
       self.validation_label.set_label(f"Keys exported: {csv_path}")
     except OSError as exc:
       self.validation_label.set_label(f"CSV export failed: {exc}")
+
+  def _install_css(self) -> None:
+    css = b"""
+.section-card {
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid alpha(currentColor, 0.08);
+  background: alpha(@window_bg_color, 0.66);
+}
+.section-title {
+  font-weight: 700;
+}
+.summary-chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: alpha(@accent_bg_color, 0.10);
+}
+"""
+    provider = Gtk.CssProvider()
+    provider.load_from_data(css)
+    display = Gdk.Display.get_default()
+    if display is None:
+      return
+    Gtk.StyleContext.add_provider_for_display(
+      display,
+      provider,
+      Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+    )

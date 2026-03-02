@@ -64,3 +64,10 @@ Backend integration (current step):
 - `stdout/stderr` are captured asynchronously and shown live in `Process output`.
 - Each output line is prefixed with `[HH:MM:SS] [STDOUT|STDERR]`.
 - `STDERR` lines are highlighted in red in the output view.
+
+GNOME visual adjustments:
+
+- Header uses `Adw.WindowTitle` with subtitle.
+- Main content is centered with `Adw.Clamp` for desktop readability.
+- UI blocks are grouped in card-like sections with subtle Adwaita styling.
+- Summary values are shown as chips and actions are right-aligned.
