@@ -88,6 +88,36 @@ This installs:
 Uninstall:
 
 ```bash
-rm -f ~/.local/share/applications/io.github.mfoc.hardnested.gui.desktop
-rm -f ~/.local/share/icons/hicolor/scalable/apps/io.github.mfoc.hardnested.gui.svg
+./gui/uninstall-local.sh
+```
+
+## Local installer
+
+Run a complete local setup with checks:
+
+```bash
+./gui/install-local.sh
+```
+
+What it verifies:
+
+- `python3` is available.
+- GTK4/libadwaita Python bindings are importable.
+- configured backend exists and is executable.
+- runtime config is initialized.
+- desktop launcher/icon is installed (unless `--no-desktop`).
+
+If backend is not explicitly provided, auto-detection order is:
+
+1. `binary_path` from `gui/runtime/config.json` (if executable).
+2. `src/mfoc-hardnested` in the current repository (if executable).
+3. Typical install paths: `/usr/local/bin/mfoc-hardnested`, `/usr/bin/mfoc-hardnested`.
+4. `mfoc-hardnested` or `mfoc` available in `PATH`.
+
+Optional:
+
+```bash
+./gui/install-local.sh --no-desktop
+./gui/install-local.sh --backend-bin /absolute/path/to/mfoc-hardnested
+MFOC_BACKEND_BIN=/absolute/path/to/mfoc-hardnested ./gui/install-local.sh
 ```
