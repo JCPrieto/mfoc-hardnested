@@ -63,3 +63,4 @@ debian/mfoc-hardnested.substvars
 
 config.h.in~
 .idea/*
+*.deb

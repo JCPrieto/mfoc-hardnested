@@ -1,8 +1,10 @@
 """Persistent app configuration."""
 
+import os
 from dataclasses import asdict, dataclass
 import json
 from pathlib import Path
+import shutil
 
 
 @dataclass
@@ -16,18 +18,49 @@ class AppConfig:
 
 
 def runtime_dir() -> Path:
-  """Return local runtime directory inside the repository."""
-  return Path(__file__).resolve().parents[1] / "runtime"
+  """Return runtime directory, preferring writable paths.
+
+  Order:
+  1) MFOC_GUI_RUNTIME_DIR (if set)
+  2) app-local runtime dir when app tree is writable
+  3) XDG state dir (~/.local/state/mfoc-hardnested-gui)
+  """
+  override = os.environ.get("MFOC_GUI_RUNTIME_DIR", "").strip()
+  if override:
+    return Path(override).expanduser().resolve()
+
+  local_runtime = app_root() / "runtime"
+  if os.access(app_root(), os.W_OK):
+    return local_runtime
+
+  state_home = os.environ.get("XDG_STATE_HOME", "~/.local/state")
+  return (Path(state_home).expanduser() / "mfoc-hardnested-gui").resolve()
 
 
-def repo_root() -> Path:
-  """Return repository root path."""
-  return Path(__file__).resolve().parents[2]
+def app_root() -> Path:
+  """Return application root path."""
+  return Path(__file__).resolve().parents[1]
 
 
 def default_binary_path() -> str:
-  """Return default backend binary path as absolute string."""
-  return str((repo_root() / "src" / "mfoc-hardnested").resolve())
+  """Return best-effort backend binary path."""
+  env_backend = os.environ.get("MFOC_BACKEND_BIN", "").strip()
+  if env_backend:
+    return str(Path(env_backend).expanduser())
+
+  local_candidate = (app_root().parent / "src" / "mfoc-hardnested").resolve()
+  if local_candidate.exists():
+    return str(local_candidate)
+
+  path_backend = shutil.which("mfoc-hardnested")
+  if path_backend:
+    return path_backend
+
+  for candidate in ("/usr/local/bin/mfoc-hardnested", "/usr/bin/mfoc-hardnested"):
+    if Path(candidate).exists():
+      return candidate
+
+  return str(local_candidate)
 
 
 def config_path() -> Path:
@@ -39,7 +72,7 @@ def _normalize_binary_path(raw_path: str) -> str:
   path = Path(raw_path)
   if path.is_absolute():
     return str(path)
-  return str((repo_root() / path).resolve())
+  return str((app_root().parent / path).resolve())
 
 
 def load_or_create_config() -> AppConfig:

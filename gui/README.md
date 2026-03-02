@@ -121,3 +121,23 @@ Optional:
 ./gui/install-local.sh --backend-bin /absolute/path/to/mfoc-hardnested
 MFOC_BACKEND_BIN=/absolute/path/to/mfoc-hardnested ./gui/install-local.sh
 ```
+
+## Build .deb package
+
+Build Debian package from the repository root:
+
+```bash
+./gui/packaging/deb/build-deb.sh
+```
+
+Optional custom version:
+
+```bash
+./gui/packaging/deb/build-deb.sh 0.10.9+gui1
+```
+
+Install package:
+
+```bash
+sudo dpkg -i ./mfoc-hardnested-gui_<version>_all.deb
+```
