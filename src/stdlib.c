@@ -32,27 +32,31 @@
  */
 
 // Handle platform specific includes
+#include <errno.h>
 #include <stdlib.h>
+#include <string.h>
 #include <windows.h>
 
-//There is no setenv()and unsetenv() in windows,but we can use putenv() instead.
+// Windows does not provide POSIX setenv()/unsetenv(); map them to WinAPI.
 int setenv(const char *name, const char *value, int overwrite)
 {
-  char *env = getenv(name);
-  if ((env && overwrite) || (!env)) {
-    char *str[32];
-    strcpy(*str, name);
-    strcat(*str, "=");
-    strcat(*str, value);
-    return _putenv(*str);
+  if (name == NULL || name[0] == '\0' || strchr(name, '=') != NULL || value == NULL) {
+    errno = EINVAL;
+    return -1;
   }
-  return -1;
+
+  if (!overwrite && getenv(name) != NULL) {
+    return 0;
+  }
+
+  return SetEnvironmentVariableA(name, value) ? 0 : -1;
 }
 
 void unsetenv(const char *name)
 {
-  char *str[32];
-  strcpy(*str, name);
-  strcat(*str, "=");
-  _putenv(*str);
+  if (name == NULL || name[0] == '\0' || strchr(name, '=') != NULL) {
+    return;
+  }
+
+  SetEnvironmentVariableA(name, NULL);
 }
