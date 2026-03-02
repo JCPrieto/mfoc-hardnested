@@ -130,6 +130,8 @@ Build Debian package from the repository root:
 ./gui/packaging/deb/build-deb.sh
 ```
 
+Default GUI package version is read from `gui/VERSION` (initially `0.0.1`).
+
 Optional custom version:
 
 ```bash
