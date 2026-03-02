@@ -1,3 +1,8 @@
+2026-03-02  Juan Carlos Prieto <JuanC.Prieto.Silos@gmail.com>
+
+	* src/stdlib.c: Replace custom Windows setenv()/unsetenv()
+	implementation with WinAPI-based behavior and input validation.
+
 2013-01-20  Romuald Conty <romuald@libnfc.org>
 
 	* ChangeLog: Update outdated email addresses
@@ -240,4 +245,3 @@
 
 	* Import MFOC 0.08 from http://www.nethemba.com/mfoc.tar.bz2 on 13th
 	Sept 2010
-

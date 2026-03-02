@@ -1,4 +1,4 @@
-AC_INIT([mfoc-hardnested],[0.10.9],[mifare@nethemba.com])
+AC_INIT([mfoc-hardnested],[0.10.10],[mifare@nethemba.com])
 
 AC_CONFIG_MACRO_DIR([m4])
 

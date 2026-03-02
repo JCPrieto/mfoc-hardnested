@@ -1,3 +1,11 @@
+mfoc-hardnested (0.10.10-1) unstable; urgency=medium
+
+  * New upstream version 0.10.10
+  * Fix Windows setenv()/unsetenv() implementation using WinAPI.
+  * Validate environment variable names and keep overwrite semantics.
+
+ -- Juan Carlos Prieto <JuanC.Prieto.Silos@gmail.com>  Mon, 02 Mar 2026 22:29:41 +0100
+
 mfoc-hardnested (0.10.9-1) unstable; urgency=medium
 
   * New upstream version 0.10.9
