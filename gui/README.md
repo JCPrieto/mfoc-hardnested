@@ -71,3 +71,23 @@ GNOME visual adjustments:
 - Main content is centered with `Adw.Clamp` for desktop readability.
 - UI blocks are grouped in card-like sections with subtle Adwaita styling.
 - Summary values are shown as chips and actions are right-aligned.
+
+## Desktop launcher
+
+Install `.desktop` launcher + icon for the current user:
+
+```bash
+./gui/install-desktop.sh
+```
+
+This installs:
+
+- `~/.local/share/applications/io.github.mfoc.hardnested.gui.desktop`
+- `~/.local/share/icons/hicolor/scalable/apps/io.github.mfoc.hardnested.gui.svg`
+
+Uninstall:
+
+```bash
+rm -f ~/.local/share/applications/io.github.mfoc.hardnested.gui.desktop
+rm -f ~/.local/share/icons/hicolor/scalable/apps/io.github.mfoc.hardnested.gui.svg
+```
