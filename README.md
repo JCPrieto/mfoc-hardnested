@@ -34,6 +34,23 @@ autoreconf -vis
 make && sudo make install
 ```
 
+## Debian packaging
+
+Backend (`mfoc-hardnested`) package:
+```bash
+./packaging/build-backend-deb.sh
+```
+
+If dependencies are missing, install:
+```bash
+sudo apt install -y debhelper libnfc-dev liblzma-dev pkg-config
+```
+
+GUI package:
+```bash
+./gui/packaging/deb/build-deb.sh
+```
+
 # Usage #
 Needs libusb0.dll and nfc.dll in the path, better on the same directory.
 Needs to install libusbK v3.0.7.0, using Zadig https://zadig.akeo.ie/, go to Option, List All Devices, select your reader, select libusbK(v3.0.7.0) and click on replace driver.
