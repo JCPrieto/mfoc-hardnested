@@ -1,6 +1,6 @@
-# GUI Skeleton
+# GUI Prototype
 
-GNOME-focused GUI bootstrap using GTK4 + libadwaita.
+GNOME-focused GUI prototype using GTK4 + libadwaita.
 
 ## Layout
 
@@ -86,12 +86,21 @@ Default backend resolution order:
 
 ## Packaging/install scripts
 
-At the moment, this `gui/` tree does not include:
+Available scripts in this tree:
 
-- `install-local.sh`
-- `install-desktop.sh`
-- `uninstall-local.sh`
-- `packaging/deb/build-deb.sh`
-- `gui/VERSION`
+- `install-local.sh`: prepares runtime config and optional desktop launcher.
+- `install-desktop.sh`: installs `.desktop` launcher and icon in `~/.local/share`.
+- `uninstall-local.sh`: removes local desktop integration.
+- `packaging/deb/build-deb.sh`: builds `mfoc-hardnested-gui_<version>_all.deb`.
 
-If those workflows are needed, they must be added first.
+Examples:
+
+```bash
+./gui/install-local.sh
+./gui/install-local.sh --backend-bin /absolute/path/to/mfoc-hardnested
+./gui/install-desktop.sh
+./gui/uninstall-local.sh
+./gui/packaging/deb/build-deb.sh
+```
+
+`gui/VERSION` is used by `build-deb.sh` as the first package version source.
