@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=MFOC Hardnested GUI
+Comment=GNOME frontend for mfoc-hardnested
+Exec=python3 @APP_DIR@/main.py
+Path=@APP_DIR@
+Icon=@ICON_PATH@
+Terminal=false
+Categories=Utility;Security;
+Keywords=nfc;mfoc;hardnested;mifare;
+StartupNotify=true

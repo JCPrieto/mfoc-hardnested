@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=MFOC Hardnested GUI
+Comment=GNOME frontend for mfoc-hardnested
+Exec=mfoc-hardnested-gui
+Icon=io.github.mfoc.hardnested.gui
+Terminal=false
+Categories=Utility;Security;
+Keywords=nfc;mfoc;hardnested;mifare;
+StartupNotify=true

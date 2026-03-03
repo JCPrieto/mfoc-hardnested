@@ -1,0 +1,10 @@
+Package: mfoc-hardnested-gui
+Version: @VERSION@
+Section: utils
+Priority: optional
+Architecture: all
+Maintainer: MFOC Hardnested Maintainers <mifare@nethemba.com>
+Depends: python3, python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1
+Recommends: mfoc-hardnested
+Description: GNOME GUI frontend for mfoc-hardnested
+ GTK4/libadwaita desktop frontend for running mfoc-hardnested.
